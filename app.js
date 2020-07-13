@@ -1,55 +1,34 @@
 const http = require('http');
+const https = require('https');
 const net = require('net');
 const { URL } = require('url');
 
 // Create an HTTP tunneling proxy
 const proxy = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('okay');
-});
+    const { headers, method, url } = req;
 
-proxy.on('connect', (req, clientSocket, head) => {
-    // Connect to an origin server
-    console.log("connecting to tunnel: ", req.url);
-    const { port, hostname } = new URL(`http://${req.url}`);
-    const serverSocket = net.connect(port || 80, hostname, () => {
-        clientSocket.write('HTTP/1.1 200 Connection Established\r\n' +
-            'Proxy-agent: Node.js-Proxy\r\n' +
-            '\r\n');
-        serverSocket.write(head);
-        serverSocket.pipe(clientSocket);
-        clientSocket.pipe(serverSocket);
+    console.log("Host: ", process.env.HOST_URL);
+    console.log("PORT: ", process.env.HOST_PORT);
+
+    let body = [];
+    req.on('error', (err) => {
+        console.error(err);
+    }).on('data', (chunk) => {
+        body.push(chunk);
+    }).on('end', () => {
+        body = Buffer.concat(body).toString();
+
+        const options = {
+            host: process.env.HOST_URL,
+            port: process.env.HOST_PORT,
+            path: url,
+            method: method,
+            headers: headers,
+            body: body
+        }
+
+        http.request(options, (response) => {
+            response.pipe(res, { end: true });
+        })
     });
-});
-
-// Now that proxy is running
-proxy.listen(1337, '127.0.0.1', () => {
-   console.log("server listening on port 1337");
-
-    // Make a request to a tunneling proxy
-    const options = {
-        port: 1337,
-        host: '127.0.0.1',
-        method: 'CONNECT',
-        path: 'www.google.com:80'
-    };
-
-    const req = http.request(options);
-    req.end();
-
-    req.on('connect', (res, socket, head) => {
-        console.log('got connected!');
-
-        // Make a request over an HTTP tunnel
-        socket.write('GET / HTTP/1.1\r\n' +
-            'Host: www.google.com:80\r\n' +
-            'Connection: close\r\n' +
-            '\r\n');
-        socket.on('data', (chunk) => {
-            //console.log(chunk.toString());
-        });
-        socket.on('end', () => {
-            proxy.close();
-        });
-    });
-});
+}).listen(9090);
