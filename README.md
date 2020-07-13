@@ -2,7 +2,7 @@
 
 This is simple forward proxy utility written in nodejs. 
 
-If you have an API that restricts IP addresses, this app can stand as forward proxy to forward all requests.
+If you have an API that restricts IP addresses, this app can stand as forward proxy on the whitelisted server to forward all your requests.
 
 It supports both http and https requests.
 
